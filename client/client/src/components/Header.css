@@ -1,0 +1,16 @@
+.header-appbar {
+    background-color: #3f51b5; /* Ændret baggrundsfarve */
+  }
+  
+  .header-toolbar {
+    display: flex;
+    justify-content: space-between; /* Placerer elementer i toolbaren i hver sin ende */
+    padding: 0 20px; /* Tilføj padding */
+  }
+  
+  .header-logo {
+    font-family: 'Roboto', sans-serif;
+    font-weight: bold;
+    color: white;
+  }
+  

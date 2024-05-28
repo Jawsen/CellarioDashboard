@@ -1,0 +1,28 @@
+.cell-overview-container {
+  padding: 20px;
+  background-color: #D3E2EF;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(14, 92, 102, 0.1);
+}
+
+.cell-overview-title {
+  text-align: left;
+  color: #333;
+  margin-bottom: 20px;
+}
+
+.cell-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cell-chart-title {
+  margin-top: 10px;
+  font-weight: bold;
+}
+.pie-chart-container {
+  width: 100%; /* Gør beholderen rektangulær */
+  display: flex;
+  justify-content: center;
+}

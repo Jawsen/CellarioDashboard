@@ -1,0 +1,30 @@
+.order-summary-container {
+    padding: 20px;
+    background-color: #D3E2EF;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .order-summary-item {
+    padding: 16px;
+    border-radius: 8px;
+    color: #fff;
+    text-align: center;
+    transition: transform 0.2s ease-in-out;
+    min-width: 100px
+  }
+  
+  .order-summary-item:hover {
+    transform: scale(1.05);
+  }
+  
+  .order-summary-title {
+    font-size: 1rem;
+    margin-bottom: 5px;
+  }
+  
+  .order-summary-value {
+    font-size: rem;
+    font-weight: bold;
+  }
+  
