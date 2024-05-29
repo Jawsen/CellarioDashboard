@@ -13,12 +13,13 @@ const OrderSchema = new Schema({
     required: true
   },
   Owner: {
-    type: mongoose.Schema.Types.ObjectId,   // Reference to the User model 
+    type: mongoose.Schema.Types.ObjectId,  
     ref: 'User',
     required: true
   },
   WorkCell: {
-    type: Number,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'WorkCell',
     required: true
   },
   CreatedDate: {
@@ -27,7 +28,8 @@ const OrderSchema = new Schema({
     default: Date.now
   },
   Status: {
-    type: Number,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Status',
     required: true
   }
 });

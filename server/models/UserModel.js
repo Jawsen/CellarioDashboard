@@ -1,21 +1,18 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 
-// Define the schema
-const userSchema = new Schema({
 
+const userSchema = new Schema({
   fullname: {
     type: String,
     required: true,
-    maxlength: 50
+   
   },
-  Intials: {
+  initials: {  
     type: String,
     required: true,
-    maxlength: 50
-  },
-  default: true
   }
+ 
 });
 
 // Create the model
