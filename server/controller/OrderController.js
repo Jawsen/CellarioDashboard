@@ -42,6 +42,19 @@ const addOrder = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Error adding order', error });
   }
+
 };
 
-module.exports = { addOrder };
+
+
+const getOrders = async (req, res) => {
+  try {
+    const orders = await Order.find().populate('Owner').populate('WorkCell').populate('Status');
+    res.json(orders);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+  
+  module.exports = { addOrder, getOrders };

@@ -1,19 +1,15 @@
 import React from 'react';
-import './Header.css'; // Import the CSS file
-import AppBar from '@mui/material/AppBar';
-import Toolbar from '@mui/material/Toolbar';
-import Typography from '@mui/material/Typography';
 
-const Header = () => {
+function Header() {
   return (
-    <AppBar position="static" className="header-appbar">
-      <Toolbar className="header-toolbar">
-        <Typography variant="h6" component="div" className="header-logo">
+    <header className="bg-white border-b border-black w-full">
+      <div className="flex justify-between items-center px-5">
+        <div className="font-roboto font-bold text-[rgb(10,10,10)]">
           Logo
-        </Typography>
-      </Toolbar>
-    </AppBar>
+        </div>
+      </div>
+    </header>
   );
-};
+}
 
 export default Header;
