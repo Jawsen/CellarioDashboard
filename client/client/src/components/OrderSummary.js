@@ -1,15 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Paper, Typography } from '@mui/material';
-
-const summaryData = [
-  { title: 'Total Orders', value: 100, color: '#326AA0' },
-  { title: 'Active Orders', value: 20, color: '#C8DEBE' },
-  { title: 'Started Orders', value: 30, color: '#DAD89E' },
-  { title: 'Submitted Orders', value: 40, color: '#9ED3DA' },
-  { title: 'Finished Orders', value: 10, color: '#A9A7A7' },
-];
+import axios from 'axios'; // Assuming axios is used for HTTP requests
 
 const OrderSummary = () => {
+  const [summaryData, setSummaryData] = useState([]);
+
+  useEffect(() => {
+    const fetchOrderSummary = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/summary'); // Update this URL
+        const data = response.data;
+        setSummaryData([
+          { title: 'Total Orders', value: data.totalOrders, color: '#326AA0' },
+          { title: 'Active Orders', value: data.statusCounts['Started'] || 0, color: '#C8DEBE' },
+          { title: 'Submitted Orders', value: data.statusCounts['Submitted'] || 0, color: '#9ED3DA' },
+          { title: 'Finished Orders', value: data.statusCounts['Finished'] || 0, color: '#A9A7A7' },
+        ]);
+      } catch (error) {
+        console.error('Failed to fetch order summary:', error);
+      }
+    };
+
+    fetchOrderSummary();
+  }, []);
+
   return (
     <Box className="flex gap-2.5 p-4 bg-white rounded-lg ml-2.5 mt-2.5 mb-2.5 mr-2.5 items-center justify-start">
       {summaryData.map((data, index) => (
@@ -23,7 +37,7 @@ const OrderSummary = () => {
           </Typography>
           <Typography className="text-2xl font-bold" variant="h4" style={{ color: 'white' }}>
             {data.value}
-            </Typography>
+          </Typography>
         </Paper>
       ))}
     </Box>

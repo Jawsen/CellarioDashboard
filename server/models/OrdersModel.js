@@ -27,6 +27,9 @@ const OrderSchema = new Schema({
     required: true,
     default: Date.now
   },
+  EndDate: {
+    type: Date
+  },
   Status: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Status',

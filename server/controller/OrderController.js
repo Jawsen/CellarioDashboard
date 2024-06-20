@@ -5,7 +5,7 @@ const Status = require('../models/StatusModel');
 
 // Controller to add a new order
 const addOrder = async (req, res) => {
-  const { Description, Owner, WorkCell: WorkCellId, Status: StatusId } = req.body;
+  const { Description, Owner, WorkCell: WorkCellId, Status: StatusId, EndDate } = req.body;
 
   if (!Description || !Owner || !WorkCellId || !StatusId) {
     return res.status(400).json({ message: 'Description, Owner, WorkCell, and Status are required.' });
@@ -34,7 +34,8 @@ const addOrder = async (req, res) => {
       Description,
       Owner,
       WorkCell: WorkCellId,
-      Status: StatusId
+      Status: StatusId,
+      EndDate  
     });
 
     const savedOrder = await newOrder.save();
@@ -42,19 +43,33 @@ const addOrder = async (req, res) => {
   } catch (error) {
     res.status(500).json({ message: 'Error adding order', error });
   }
-
 };
 
-
-
-const getOrders = async (req, res) => {
+ const getOrders = async (req, res) => {
   try {
     const orders = await Order.find().populate('Owner').populate('WorkCell').populate('Status');
     res.json(orders);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-};
+}; 
 
+const getSummary = async (req, res) => {
+  try {
+    const orders = await Order.find().populate('Owner').populate('WorkCell').populate('Status');
+    const statusSummary = orders.reduce((acc, order) => {
+      const statusName = order.Status.name;
+      acc[statusName] = (acc[statusName] || 0) + 1;
+      return acc;
+    }, {});
+
+    res.json({
+      totalOrders: orders.length,
+      statusCounts: statusSummary
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
   
-  module.exports = { addOrder, getOrders };
+  module.exports = { addOrder, getOrders, getSummary};

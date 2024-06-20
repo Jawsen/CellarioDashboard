@@ -1,14 +1,23 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import axios from 'axios';
 import { Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@mui/material';
 
-const rows = [
-  { id: 1, orderId: 1001, status: 'Active', date: '2022-05-26', owner: 'Owner 1' },
-  { id: 2, orderId: 1002, status: 'Submitted', date: '2022-05-25', owner: 'Owner 2' },
-  { id: 3, orderId: 1003, status: 'Finished', date: '2022-05-24', owner: 'Owner 3' },
-  { id: 4, orderId: 1004, status: 'Started', date: '2022-05-23', owner: 'Owner 4' },
-];
-
 const History = () => {
+  const [orders, setOrders] = useState([]);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await axios.get('http://localhost:8000/orders'); // Update with your actual endpoint
+        setOrders(response.data);
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+      }
+    };
+
+    fetchOrders();
+  }, []);
+
   return (
     <TableContainer className=" relative w-[707px] overflow-x-auto rounded-lg" style={{ marginTop: '20px' }}>
       <div 
@@ -44,18 +53,22 @@ const History = () => {
               <div style={{ marginBottom: '0.1px' }}>Created Date</div>
             </TableCell>
             <TableCell className="p-3 text-left">
+              <div style={{ marginBottom: '0.1px' }}>End Date</div>
+            </TableCell>
+            <TableCell className="p-3 text-left">
               <div style={{ marginBottom: '0.1px' }}>Owner</div>
             </TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((row) => (
-            <TableRow key={row.id} className="bg-[#D3E2EF] hover:bg-[#6f9bc2]">
-              <TableCell className="p-3">{row.id}</TableCell>
-              <TableCell className="p-3">{row.orderId}</TableCell>
-              <TableCell className="p-3">{row.status}</TableCell>
-              <TableCell className="p-3">{row.date}</TableCell>
-              <TableCell className="p-3">{row.owner}</TableCell>
+          {orders.map((order) => (
+            <TableRow key={order._id} className="bg-[#D3E2EF] hover:bg-[#6f9bc2]">
+              <TableCell className="p-3">{order.WorkCell.name}</TableCell>
+              <TableCell className="p-3">{order.ID}</TableCell>
+              <TableCell className="p-3">{order.Status.name}</TableCell>
+              <TableCell className="p-3">{new Date(order.CreatedDate).toLocaleDateString()}</TableCell>
+              <TableCell className="p-3">{order.EndDate ? new Date(order.EndDate).toLocaleDateString() : 'N/A'}</TableCell>
+              <TableCell className="p-3">{order.Owner.fullname}</TableCell>
             </TableRow>
           ))}
         </TableBody>
