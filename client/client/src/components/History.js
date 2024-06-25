@@ -8,7 +8,7 @@ const History = () => {
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/orders'); // Update with your actual endpoint
+        const response = await axios.get('http://localhost:8000/orders');
         setOrders(response.data);
       } catch (error) {
         console.error('Error fetching orders:', error);

@@ -3,7 +3,7 @@ const User = require('../models/UserModel');
 const WorkCell = require('../models/WorkCells');
 const Status = require('../models/StatusModel');
 
-// Controller to add a new order
+
 const addOrder = async (req, res) => {
   const { Description, Owner, WorkCell: WorkCellId, Status: StatusId, EndDate } = req.body;
 
@@ -12,19 +12,18 @@ const addOrder = async (req, res) => {
   }
 
   try {
-    // Check if the owner exists
+   
     const ownerExists = await User.findById(Owner);
     if (!ownerExists) {
       return res.status(400).json({ message: 'Owner not found.' });
     }
 
-    // Check if the workcell exists
+    
     const workCellExists = await WorkCell.findById(WorkCellId);
     if (!workCellExists) {
       return res.status(400).json({ message: 'WorkCell not found.' });
     }
 
-    // Check if the status exists
     const statusExists = await Status.findById(StatusId);
     if (!statusExists) {
       return res.status(400).json({ message: 'Status not found.' });
@@ -71,5 +70,36 @@ const getSummary = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+const getWorkCellSummary = async (req, res) => {
+  try {
+    const orders = await Order.find().populate('WorkCell').populate('Status');
+
+    // Initialize an object to store counts by work cell and status
+    const summary = {};
+
+    // Count orders by work cell and status
+    orders.forEach(order => {
+      const statusName = order.Status.name;
+      const workCellName = order.WorkCell.name; // Assuming WorkCell has a 'name' property
+
+      // Initialize counts if they don't exist
+      if (!summary[workCellName]) {
+        summary[workCellName] = {};
+      }
+      if (!summary[workCellName][statusName]) {
+        summary[workCellName][statusName] = 0;
+      }
+
+      // Increment count
+      summary[workCellName][statusName]++;
+    });
+
+    res.json({ summary });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
   
-  module.exports = { addOrder, getOrders, getSummary};
+  module.exports = { addOrder, getOrders, getSummary, getWorkCellSummary};

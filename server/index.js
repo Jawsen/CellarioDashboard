@@ -10,6 +10,7 @@ const { addOrder } = require('./controller/OrderController');
 const { database } = require('./database');
 const { getOrders } = require('./controller/OrderController');
 const { getSummary } = require('./controller/OrderController');
+const { getWorkCellSummary } = require('./controller/OrderController');
 
 
 const app = express();
@@ -34,6 +35,7 @@ app.get('/', (req,res) => {
 
 app.get('/orders', getOrders);
 app.get('/summary', getSummary);
+app.get('/workcellSummary',getWorkCellSummary);
 
 
 
