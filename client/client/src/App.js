@@ -10,7 +10,7 @@ import Sidebar from './components/Sidebar';
 function App() {
   return (
     <div className="min-h-screen grid grid-cols-1 lg:grid-cols-12">
-      <div className="hidden lg:block lg:col-span-2 bg-orange-500 h-full">
+      <div className="hidden lg:block lg:col-span-2 h-full">
         <Sidebar />
       </div>
       <div className="lg:col-span-10">
