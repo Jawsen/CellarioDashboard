@@ -1,298 +1,397 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { Dialog, DialogTitle, DialogContent, Button, DialogActions, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText, IconButton } from '@mui/material';
-import CancelIcon from '@mui/icons-material/Cancel';
+import {
+  Dialog, DialogTitle, DialogContent, Button, DialogActions,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, IconButton, Menu, MenuItem
+} from '@mui/material';
+import { ArrowDropDown, MoreVert } from '@mui/icons-material';
 import apiService from '../apiService';
+import * as XLSX from 'xlsx';
 
 const History = () => {
   const [orders, setOrders] = useState([]);
-  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
-  const [filters, setFilters] = useState({
-    status: [],
-    owner: [],
-    cellname: [],
-    orderid: []
+  const [addOrderDialogOpen, setAddOrderDialogOpen] = useState(false);
+  const [newOrder, setNewOrder] = useState({
+    description: '',
+    owner: '',
+    workCell: '',
+    status: '',
+    endDate: '',
+    plates: '',
+    notes: ''
   });
-
-  const [statuses, setStatuses] = useState([]);
-  const [owners, setOwners] = useState([]);
-  const [cellnames, setCellnames] = useState([]);
-  const [orderids, setOrderids] = useState([]);
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [orderToCancel, setOrderToCancel] = useState(null);
-  const [hoveredOrderId, setHoveredOrderId] = useState(null);
+  const [filterMenus, setFilterMenus] = useState({
+    cellName: null,
+    orderId: null,
+    status: null,
+    createdDate: null,
+    endDate: null,
+    owner: null,
+    plates: null,
+  });
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [note, setNote] = useState('');
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [filteredOrders, setFilteredOrders] = useState([]);
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
-        const response = await axios.get('http://localhost:8000/orders');
-        console.log('Fetched orders:', response.data);
-        setOrders(response.data);
-        const statusSet = new Set(response.data.map(order => order.Status.name));
-        statusSet.add('Canceled'); // Ensure "Canceled" is included in the statuses
-        setStatuses([...statusSet]);
-        setOwners([...new Set(response.data.map(order => order.Owner.fullname))]);
-        setCellnames([...new Set(response.data.map(order => order.WorkCell.name))]);
-        setOrderids([...new Set(response.data.map(order => order.ID))]);
+        const response = await apiService.getOrders();
+        setOrders(response);
+        setFilteredOrders(response); // Set both orders and filtered orders
       } catch (error) {
         console.error('Error fetching orders:', error);
       }
     };
-
     fetchOrders();
   }, []);
 
-  const handleFilterClick = () => {
-    setFilterDialogOpen(true);
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewOrder({ ...newOrder, [name]: value });
   };
 
-  const handleClose = () => {
-    setFilterDialogOpen(false);
-    setCancelDialogOpen(false);
+  const handleAddOrderClick = () => {
+    setAddOrderDialogOpen(true);
   };
 
-  const applyFilters = () => {
-    console.log('Applying filters:', filters);
-    handleClose();
+  const handleAddOrderClose = () => {
+    setAddOrderDialogOpen(false);
   };
 
-  const handleFilterChange = (event) => {
-    const { target: { name, value } } = event;
-    setFilters({
-      ...filters,
-      [name]: typeof value === 'string' ? value.split(',') : value,
+  const handleAddOrderSubmit = async () => {
+    try {
+      const platesArray = newOrder.plates.split(',').map(plate => plate.trim()); // Convert comma-separated plates to array
+  
+      const orderData = {
+        description: newOrder.description,
+        owner: newOrder.owner, // This will be the username instead of ObjectID
+        workCell: newOrder.workCell, // This will be the work cell name or ID
+        status: newOrder.status, // This will be the status name instead of ObjectID
+        endDate: newOrder.endDate,
+        plates: platesArray, // Plate barcodes instead of ObjectIDs
+        notes: newOrder.notes,
+        createdDate: new Date().toISOString(), // Add the current date for CreatedDate
+      };
+  
+      // Call the API to add the order
+      const response = await apiService.addOrder(orderData);
+  
+      // Assuming the response contains the newly added order from the server
+      setOrders([...orders, response]); // Update the orders state with the new order
+      setFilteredOrders([...orders, response]); // Update the filtered orders state as well
+      setAddOrderDialogOpen(false); // Close the Add Order dialog
+  
+      // Reset the form fields
+      setNewOrder({
+        description: '',
+        owner: '',
+        workCell: '',
+        status: '',
+        endDate: '',
+        plates: '',
+        notes: '',
+      });
+    } catch (error) {
+      console.error('Error adding order:', error);
+    }
+  };
+  
+  
+
+  const exportToExcel = () => {
+    const formattedOrders = filteredOrders.map(order => ({
+      "Cell name": order.WorkCell?.name || 'N/A',
+      "Order ID": order.ID || 'N/A',
+      "Status": order.Status?.name || 'N/A',
+      "Created Date": new Date(order.CreatedDate).toLocaleDateString(),
+      "End Date": order.EndDate ? new Date(order.EndDate).toLocaleDateString() : 'N/A',
+      "Owner": order.Owner?.fullname || 'N/A',
+      "Plates (IDs)": order.Plates ? order.Plates.map(plate => plate.ID).join(', ') : 'No Plates',
+      "Notes": order.Notes || 'No Notes'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(formattedOrders);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Orders');
+    XLSX.writeFile(workbook, 'orders.xlsx');
+  };
+
+  const handleMenuOpen = (column, event) => {
+    setFilterMenus({
+      ...filterMenus,
+      [column]: event.currentTarget,
     });
   };
 
-  const handleCancelClick = (order) => {
-    console.log('Cancel clicked for order:', order);
-    setOrderToCancel(order);
-    setCancelDialogOpen(true);
+  const handleMenuClose = (column) => {
+    setFilterMenus({
+      ...filterMenus,
+      [column]: null,
+    });
   };
 
-  const confirmCancelOrder = async () => {
-    if (!orderToCancel) return;
-  
-    console.log('Sending request to cancel order:', orderToCancel); // Log the entire order object
-    const cancelUrl = `http://localhost:8000/orders/${orderToCancel.ID}/cancel`; // Use ID for number
-    console.log('Cancel URL:', cancelUrl); // Log the URL
-  
-    // Define a timeout promise
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Request timed out')), 10000) // 10 seconds timeout
-    );
-  
+  const handleFilter = (column, value) => {
+    const filtered = orders.filter((order) => {
+      if (column === 'cellName') return order.WorkCell?.name === value;
+      if (column === 'orderId') return order.ID === value;
+      if (column === 'status') return order.Status?.name === value;
+      if (column === 'createdDate') return new Date(order.CreatedDate).toLocaleDateString() === value;
+      if (column === 'endDate') return new Date(order.EndDate).toLocaleDateString() === value;
+      if (column === 'owner') return order.Owner?.fullname === value;
+      if (column === 'plates') return order.Plates.some(plate => plate.ID === value);
+      return true;
+    });
+    setFilteredOrders(filtered);
+    handleMenuClose(column);
+  };
+
+  const getUniqueValues = (key) => {
+    if (key === 'createdDate' || key === 'endDate') {
+      return [...new Set(orders.filter(order => order[key === 'createdDate' ? 'CreatedDate' : 'EndDate'])
+        .map(order => new Date(order[key === 'createdDate' ? 'CreatedDate' : 'EndDate']).toLocaleDateString()))];
+    }
+    return [...new Set(orders.map(order => {
+      if (key === 'cellName') return order.WorkCell?.name || 'N/A';
+      if (key === 'orderId') return order.ID || 'N/A';
+      if (key === 'status') return order.Status?.name || 'N/A';
+      if (key === 'owner') return order.Owner?.fullname || 'N/A';
+      if (key === 'plates') return order.Plates?.map(plate => plate.ID).join(', ') || 'N/A';
+      return '';
+    }))];
+  };
+
+  const handleAddNotesClick = (order) => {
+    setSelectedOrder(order);
+    setNoteDialogOpen(true);
+    setNote(order.Notes || ''); // Load existing note if it exists
+  };
+
+  const handleCancelOrderClick = async (orderId) => {
     try {
-      const cancelPromise = apiService.cancelOrder(orderToCancel.ID); // Use ID for number
-  
-      const response = await Promise.race([cancelPromise, timeoutPromise]); // Wait for either the API request or the timeout
-      console.log('Order canceled:', response);
-  
-      setOrders(orders.map(order => 
-        order.ID === orderToCancel.ID ? { ...order, Status: { ...order.Status, name: 'Canceled' } } : order
-      ));
-      handleClose();
+      await apiService.cancelOrder(orderId); // Call the API to cancel the order
+      const updatedOrders = orders.map(order => {
+        if (order.ID === orderId) {
+          return { ...order, Status: { name: 'Cancelled' } };
+        }
+        return order;
+      });
+      setOrders(updatedOrders);
+      setFilteredOrders(updatedOrders);
     } catch (error) {
-      console.error('Error canceling order:', error);
+      console.error('Error cancelling order:', error);
     }
   };
 
-  const filteredOrders = orders.filter(order => {
-    return (
-      (filters.status.length === 0 || filters.status.includes(order.Status.name)) &&
-      (filters.owner.length === 0 || filters.owner.includes(order.Owner.fullname)) &&
-      (filters.cellname.length === 0 || filters.cellname.includes(order.WorkCell.name)) &&
-      (filters.orderid.length === 0 || filters.orderid.includes(order.ID))
-    );
-  });
+  const handleNoteSubmit = async () => {
+    try {
+      await apiService.updateOrderNote(selectedOrder.ID, note); // Save note to backend
+      const updatedOrders = orders.map(order => {
+        if (order.ID === selectedOrder.ID) {
+          return { ...order, Notes: note };
+        }
+        return order;
+      });
+
+      setOrders(updatedOrders);
+      setFilteredOrders(updatedOrders);
+      setNoteDialogOpen(false);
+      setNote('');
+    } catch (error) {
+      console.error('Error saving notes:', error);
+    }
+  };
 
   return (
-    <TableContainer className="relative w-[707px] overflow-x-auto rounded-lg" style={{ marginTop: '20px' }}>
-      <button
-        onClick={handleFilterClick}
-        style={{ 
-          position: 'absolute', 
-          top: 15, 
-          right: 20, 
-          borderRadius: '50%', 
-          padding: '5px',
-          backgroundColor: '#D3E2EF',
-          border: 'none',
-          cursor: 'pointer'
-        }}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6" style={{ width: '24px', height: '24px' }}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c2.755 0 5.455.232 8.083.678.533.09.917.556.917 1.096v1.044a2.25 2.25 0 0 1-.659 1.591l-5.432 5.432a2.25 2.25 0 0 0-.659 1.591v2.927a2.25 2.25 0 0 1-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 0 0-.659-1.591L3.659 7.409A2.25 2.25 0 0 1 3 5.818V4.774c0-.54.384-1.006.917-1.096A48.32 48.32 0 0 1 12 3Z" />
-        </svg>
-      </button>
-      <Dialog 
-        open={filterDialogOpen} 
-        onClose={handleClose} 
-        PaperProps={{ 
-          style: { 
-            backgroundColor: 'rgba(255,255,255,0.8)',
-            width: '600px',
-            height: '300px',
-            position: 'absolute',
-            top: '30%',
-            right: '20%',
-            borderRadius: '15px'
-          }
-        }}
-      >
-        <DialogTitle>Filter Orders</DialogTitle>
-        <DialogContent>
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Status</InputLabel>
-            <Select
-              multiple
-              name="status"
-              value={filters.status}
-              onChange={handleFilterChange}
-              renderValue={(selected) => selected.join(', ')}
-            >
-              {statuses.map((status) => (
-                <MenuItem key={status} value={status}>
-                  <Checkbox checked={filters.status.indexOf(status) > -1} />
-                  <ListItemText primary={status} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Owner</InputLabel>
-            <Select
-              multiple
-              name="owner"
-              value={filters.owner}
-              onChange={handleFilterChange}
-              renderValue={(selected) => selected.join(', ')}
-            >
-              {owners.map((owner) => (
-                <MenuItem key={owner} value={owner}>
-                  <Checkbox checked={filters.owner.indexOf(owner) > -1} />
-                  <ListItemText primary={owner} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Cell Name</InputLabel>
-            <Select
-              multiple
-              name="cellname"
-              value={filters.cellname}
-              onChange={handleFilterChange}
-              renderValue={(selected) => selected.join(', ')}
-            >
-              {cellnames.map((cellname) => (
-                <MenuItem key={cellname} value={cellname}>
-                  <Checkbox checked={filters.cellname.indexOf(cellname) > -1} />
-                  <ListItemText primary={cellname} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="dense">
-            <InputLabel>Order ID</InputLabel>
-            <Select
-              multiple
-              name="orderid"
-              value={filters.orderid}
-              onChange={handleFilterChange}
-              renderValue={(selected) => selected.join(', ')}
-            >
-              {orderids.map((orderid) => (
-                <MenuItem key={orderid} value={orderid}>
-                  <Checkbox checked={filters.orderid.indexOf(orderid) > -1} />
-                  <ListItemText primary={orderid} />
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={applyFilters}>Apply Filters</Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog
-        open={cancelDialogOpen}
-        onClose={handleClose}
-        PaperProps={{
-          style: {
-            backgroundColor: 'rgba(255,255,255,0.8)',
-            width: '400px',
-            height: '200px',
-            position: 'absolute',
-            top: '30%',
-            right: '40%',
-            borderRadius: '15px'
-          }
-        }}
-      >
-        <DialogTitle>Cancel Order</DialogTitle>
-        <DialogContent>
-          <Typography>Are you sure you want to cancel this order?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>No</Button>
-          <Button onClick={confirmCancelOrder}>Yes</Button>
-        </DialogActions>
-      </Dialog>
-      <Typography variant="h6" component="h2" className="text-left text-black mb-5 ml-5 bg-[#D3E2EF] p-2">
-        History
-      </Typography>
-      <Table>
-        <TableHead className="bg-[#D3E2EF]">
-          <TableRow style={{ borderBottom: '2px solid black' }}>
-            <TableCell className="p-3 text-left">
-              <div style={{ marginBottom: '0.1px' }}>Cell name</div>
-            </TableCell>
-            <TableCell className="p-3 text-left">
-              <div style={{ marginBottom: '0.1px' }}>Order ID</div>
-            </TableCell>
-            <TableCell className="p-3 text-left">
-              <div style={{ marginBottom: '0.1px' }}>Status</div>
-            </TableCell>
-            <TableCell className="p-3 text-left">
-              <div style={{ marginBottom: '0.1px' }}>Created Date</div>
-            </TableCell>
-            <TableCell className="p-3 text-left">
-              <div style={{ marginBottom: '0.1px' }}>End Date</div>
-            </TableCell>
-            <TableCell className="p-3 text-left">
-              <div style={{ marginBottom: '0.1px' }}>Owner</div>
-            </TableCell>
-            <TableCell className="p-3 text-left">Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {filteredOrders.map((order) => (
-            <TableRow 
-              key={order._id} 
-              className="bg-[#D3E2EF] hover:bg-[#6f9bc2]"
-              onMouseEnter={() => setHoveredOrderId(order.ID)}
-              onMouseLeave={() => setHoveredOrderId(null)}
-            >
-              <TableCell className="p-3">{order.WorkCell.name}</TableCell>
-              <TableCell className="p-3">{order.ID}</TableCell>
-              <TableCell className="p-3">{order.Status.name}</TableCell>
-              <TableCell className="p-3">{new Date(order.CreatedDate).toLocaleDateString()}</TableCell>
-              <TableCell className="p-3">{order.EndDate ? new Date(order.EndDate).toLocaleDateString() : 'N/A'}</TableCell>
-              <TableCell className="p-3">{order.Owner.fullname}</TableCell>
-              <TableCell className="p-3">
-                {hoveredOrderId === order.ID && (order.Status.name === 'Started' || order.Status.name === 'Submitted') && (
-                  <IconButton onClick={() => handleCancelClick(order)}>
-                    <CancelIcon />
-                  </IconButton>
-                )}
+    <div className="max-h-[80vh] overflow-y-auto scrollbar-thin scrollbar-thumb-[#363636] scrollbar-track-[#e7e7e7] rounded-lg">
+      <div className="flex justify-between items-center p-5">
+        <Button onClick={exportToExcel} className="bg-[#217346] text-white p-2 rounded">
+          Export to Excel
+        </Button>
+        <Button onClick={handleAddOrderClick} className="bg-blue-600 text-white p-2 rounded">
+          Add New Order
+        </Button>
+      </div>
+
+      <TableContainer className="relative w-full overflow-x-auto">
+        <Table>
+          <TableHead className="bg-[#D3E2EF]">
+            <TableRow style={{ borderBottom: '2px solid black' }}>
+              <TableCell className="p-3 text-left">
+                Cell Name
+                <IconButton onClick={(e) => handleMenuOpen('cellName', e)}>
+                  <ArrowDropDown />
+                </IconButton>
+                <Menu
+                  anchorEl={filterMenus.cellName}
+                  open={Boolean(filterMenus.cellName)}
+                  onClose={() => handleMenuClose('cellName')}
+                >
+                  {getUniqueValues('cellName').map((value) => (
+                    <MenuItem key={value} onClick={() => handleFilter('cellName', value)}>
+                      {value}
+                    </MenuItem>
+                  ))}
+                </Menu>
               </TableCell>
+              <TableCell className="p-3 text-left">
+                Order ID
+                <IconButton onClick={(e) => handleMenuOpen('orderId', e)}>
+                  <ArrowDropDown />
+                </IconButton>
+                <Menu
+                  anchorEl={filterMenus.orderId}
+                  open={Boolean(filterMenus.orderId)}
+                  onClose={() => handleMenuClose('orderId')}
+                >
+                  {getUniqueValues('orderId').map((value) => (
+                    <MenuItem key={value} onClick={() => handleFilter('orderId', value)}>
+                      {value}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              </TableCell>
+              <TableCell className="p-3 text-left">
+                Status
+                <IconButton onClick={(e) => handleMenuOpen('status', e)}>
+                  <ArrowDropDown />
+                </IconButton>
+                <Menu
+                  anchorEl={filterMenus.status}
+                  open={Boolean(filterMenus.status)}
+                  onClose={() => handleMenuClose('status')}
+                >
+                  {getUniqueValues('status').map((value) => (
+                    <MenuItem key={value} onClick={() => handleFilter('status', value)}>
+                      {value}
+                    </MenuItem>
+                  ))}
+                </Menu>
+              </TableCell>
+              <TableCell className="p-3 text-left">Created Date</TableCell>
+              <TableCell className="p-3 text-left">End Date</TableCell>
+              <TableCell className="p-3 text-left">Owner</TableCell>
+              <TableCell className="p-3 text-left">Plates (IDs)</TableCell>
+              <TableCell className="p-3 text-left">Actions</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+          </TableHead>
+          <TableBody>
+            {filteredOrders.map((order) => (
+              <TableRow key={order.ID} className="bg-[#D3E2EF] hover:bg-[#6f9bc2]">
+                <TableCell className="p-3">{order.WorkCell?.name || 'N/A'}</TableCell>
+                <TableCell className="p-3">{order.ID || 'N/A'}</TableCell>
+                <TableCell className="p-3">{order.Status?.name || 'N/A'}</TableCell>
+                <TableCell className="p-3">{new Date(order.CreatedDate).toLocaleDateString()}</TableCell>
+                <TableCell className="p-3">{order.EndDate ? new Date(order.EndDate).toLocaleDateString() : 'N/A'}</TableCell>
+                <TableCell className="p-3">{order.Owner?.fullname || 'N/A'}</TableCell>
+                <TableCell className="p-3">{order.Plates ? order.Plates.map(plate => plate.ID).join(', ') : 'No Plates'}</TableCell>
+                <TableCell className="p-3">
+                  <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
+                    <MoreVert />
+                  </IconButton>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={Boolean(anchorEl)}
+                    onClose={() => setAnchorEl(null)}
+                  >
+                    <MenuItem onClick={() => handleAddNotesClick(order)}>Add Notes</MenuItem>
+                    <MenuItem onClick={() => handleCancelOrderClick(order.ID)}>Cancel Order</MenuItem>
+                  </Menu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      {/* Add Order Dialog */}
+      <Dialog open={addOrderDialogOpen} onClose={handleAddOrderClose}>
+        <DialogTitle>Add New Order</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Description"
+            name="description"
+            fullWidth
+            value={newOrder.description}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="Owner"
+            name="owner"
+            fullWidth
+            value={newOrder.owner}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="Work Cell"
+            name="workCell"
+            fullWidth
+            value={newOrder.workCell}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="Status"
+            name="status"
+            fullWidth
+            value={newOrder.status}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="End Date"
+            name="endDate"
+            fullWidth
+            value={newOrder.endDate}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="Plates (comma-separated)"
+            name="plates"
+            fullWidth
+            value={newOrder.plates}
+            onChange={handleInputChange}
+          />
+          <TextField
+            margin="dense"
+            label="Notes"
+            name="notes"
+            fullWidth
+            value={newOrder.notes}
+            onChange={handleInputChange}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleAddOrderClose}>Cancel</Button>
+          <Button onClick={handleAddOrderSubmit}>Submit</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Add Notes Dialog */}
+      <Dialog open={noteDialogOpen} onClose={() => setNoteDialogOpen(false)}>
+        <DialogTitle>Add Notes to Order</DialogTitle>
+        <DialogContent>
+          <TextField
+            margin="dense"
+            label="Note"
+            name="note"
+            fullWidth
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setNoteDialogOpen(false)}>Cancel</Button>
+          <Button onClick={handleNoteSubmit}>Submit</Button>
+        </DialogActions>
+      </Dialog>
+    </div>
   );
 };
 

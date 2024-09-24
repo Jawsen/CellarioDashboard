@@ -2,24 +2,22 @@ const Order = require('../models/OrdersModel');
 const User = require('../models/UserModel');
 const WorkCell = require('../models/WorkCells');
 const Status = require('../models/StatusModel');
+const Plate = require('../models/PlateModel');
 const mongoose = require('mongoose');
 
-
 const addOrder = async (req, res) => {
-  const { Description, Owner, WorkCell: WorkCellId, Status: StatusId, EndDate } = req.body;
+  const { Description, Owner, WorkCell: WorkCellId, Status: StatusId, EndDate, Plates } = req.body;
 
   if (!Description || !Owner || !WorkCellId || !StatusId) {
     return res.status(400).json({ message: 'Description, Owner, WorkCell, and Status are required.' });
   }
 
   try {
-   
     const ownerExists = await User.findById(Owner);
     if (!ownerExists) {
       return res.status(400).json({ message: 'Owner not found.' });
     }
 
-    
     const workCellExists = await WorkCell.findById(WorkCellId);
     if (!workCellExists) {
       return res.status(400).json({ message: 'WorkCell not found.' });
@@ -30,12 +28,24 @@ const addOrder = async (req, res) => {
       return res.status(400).json({ message: 'Status not found.' });
     }
 
+    const plateIds = [];
+    if (Plates) {
+      for (const plateId of Plates) {
+        const plateExists = await Plate.findById(plateId);
+        if (!plateExists) {
+          return res.status(400).json({ message: `Plate with ID ${plateId} not found.` });
+        }
+        plateIds.push(plateId);
+      }
+    }
+
     const newOrder = new Order({
       Description,
       Owner,
       WorkCell: WorkCellId,
       Status: StatusId,
-      EndDate  
+      EndDate,
+      Plates: plateIds,
     });
 
     const savedOrder = await newOrder.save();
@@ -45,14 +55,14 @@ const addOrder = async (req, res) => {
   }
 };
 
- const getOrders = async (req, res) => {
+const getOrders = async (req, res) => {
   try {
-    const orders = await Order.find().populate('Owner').populate('WorkCell').populate('Status');
+    const orders = await Order.find().populate('Owner').populate('WorkCell').populate('Status').populate('Plates');
     res.json(orders);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
-}; 
+};
 
 const getSummary = async (req, res) => {
   try {
@@ -65,7 +75,7 @@ const getSummary = async (req, res) => {
 
     res.json({
       totalOrders: orders.length,
-      statusCounts: statusSummary
+      statusCounts: statusSummary,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -76,15 +86,12 @@ const getWorkCellSummary = async (req, res) => {
   try {
     const orders = await Order.find().populate('WorkCell').populate('Status');
 
-    // Initialize an object to store counts by work cell and status
     const summary = {};
 
-    // Count orders by work cell and status
-    orders.forEach(order => {
+    orders.forEach((order) => {
       const statusName = order.Status.name;
-      const workCellName = order.WorkCell.name; // Assuming WorkCell has a 'name' property
+      const workCellName = order.WorkCell.name;
 
-      // Initialize counts if they don't exist
       if (!summary[workCellName]) {
         summary[workCellName] = {};
       }
@@ -92,7 +99,6 @@ const getWorkCellSummary = async (req, res) => {
         summary[workCellName][statusName] = 0;
       }
 
-      // Increment count
       summary[workCellName][statusName]++;
     });
 
@@ -104,13 +110,12 @@ const getWorkCellSummary = async (req, res) => {
 
 const cancelOrder = async (req, res) => {
   const { id } = req.params;
-  console.log(`Cancel request received for order ID: ${id}`); // Log the received ID
+  console.log(`Cancel request received for order ID: ${id}`);
 
   try {
-    // If ID is a string representation of a number, convert it to a number
     const orderId = isNaN(id) ? mongoose.Types.ObjectId(id) : parseInt(id, 10);
 
-    const order = await Order.findOne({ ID: orderId }); // Using the correct field name for ID
+    const order = await Order.findOne({ _id: orderId });
     if (!order) {
       console.error(`Order with ID ${id} not found`);
       return res.status(404).json({ message: 'Order not found' });
@@ -132,7 +137,23 @@ const cancelOrder = async (req, res) => {
     res.status(500).json({ message: 'Error canceling order', error });
   }
 };
-    
-  
 
-module.exports = { addOrder, getOrders, getSummary, getWorkCellSummary, cancelOrder };
+const updateOrderNote = async (req, res) => {
+  const { id } = req.params;
+  const { note } = req.body;
+
+  try {
+    const order = await Order.findById(id);
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    order.Note = note;
+    await order.save();
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { addOrder, getOrders, getSummary, getWorkCellSummary, cancelOrder, updateOrderNote };
