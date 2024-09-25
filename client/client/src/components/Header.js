@@ -1,11 +1,14 @@
 import React from 'react';
+import { ReactComponent as Logo } from '../icons/logo.svg';
 
 function Header() {
   return (
-    <header className="bg-white border-b border-black w-full">
-      <div className="flex justify-between items-center px-5">
-        <div className="font-roboto font-bold text-[rgb(10,10,10)]">
-          Logo
+    <header className=" w-[16] h-16" style={{ backgroundColor: '#326AA0' }}>
+      {/* Bruger det importerede SVG-logo */}
+      <div className="flex items-center">
+        <Logo className="h-8 w-8 text-white" />
+        <div className="ml-6 font-roboto font-bold text-white text-3xl">
+        LAB-HUB
         </div>
       </div>
     </header>

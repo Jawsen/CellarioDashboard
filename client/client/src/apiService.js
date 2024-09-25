@@ -13,6 +13,16 @@ const apiService = {
     }
   },
 
+  addOrder: async (orderData) => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/orders`, orderData);
+      return response.data;
+    } catch (error) {
+      console.error('Error adding order:', error);
+      throw error;
+    }
+  },
+
   cancelOrder: async (orderId) => {
     try {
       const response = await axios.put(`${API_BASE_URL}/orders/${orderId}/cancel`);

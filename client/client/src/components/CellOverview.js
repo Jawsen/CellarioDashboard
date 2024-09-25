@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Dialog, DialogTitle, DialogContent, DialogActions, Button,
-  FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText,
-  Grid
+  FormControl, InputLabel, Select, MenuItem, Checkbox, ListItemText
 } from '@mui/material';
 import { PieChart, Pie, Cell, Tooltip } from 'recharts';
 import axios from 'axios';
@@ -55,7 +54,7 @@ const CellOverview = () => {
     : summary;
 
   return (
-    <Box className="relative p-5 bg-[#D3E2EF] mr-12 w-[1000px] max-w-full rounded-md shadow-sm">
+    <Box className="relative p-5 bg-[#D3E2EF] w-full rounded-md shadow-sm">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px' }}>
         <div className="text-left text-gray-800 text-2xl font-bold">
           Cells Overview
@@ -78,6 +77,7 @@ const CellOverview = () => {
           </svg>
         </button>
       </div>
+
       <Dialog open={filterDialogOpen} onClose={handleClose} PaperProps={{ style: { backgroundColor: 'rgba(255,255,255,0.8)', borderRadius: '15px' } }}>
         <DialogTitle>Filter by Cell Name</DialogTitle>
         <DialogContent>
@@ -103,97 +103,47 @@ const CellOverview = () => {
           <Button onClick={applyFilters}>Apply</Button>
         </DialogActions>
       </Dialog>
-      <div className="flex justify-center mb-4">
-        <div className="mr-4 flex items-center">
-          <div
-            style={{
-              width: '12px',
-              height: '12px',
-              backgroundColor: '#C8DEBE',
-              borderRadius: '50%',
-              marginRight: '5px'
-            }}
-          />
-          <span className="text-sm">Active</span>
-        </div>
-        <div className="mr-4 flex items-center">
-          <div
-            style={{
-              width: '12px',
-              height: '12px',
-              backgroundColor: '#9ED3DA',
-              borderRadius: '50%',
-              marginRight: '5px'
-            }}
-          />
-          <span className="text-sm">Submitted</span>
-        </div>
-        <div className="mr-4 flex items-center">
-          <div
-            style={{
-              width: '12px',
-              height: '12px',
-              backgroundColor: '#D9534F',
-              borderRadius: '50%',
-              marginRight: '5px'
-            }}
-          />
-          <span className="text-sm">Canceled</span>
-        </div>
-        <div className="flex items-center">
-          <div
-            style={{
-              width: '12px',
-              height: '12px',
-              backgroundColor: '#A9A7A7',
-              borderRadius: '50%',
-              marginRight: '5px'
-            }}
-          />
-          <span className="text-sm">Finished</span>
-        </div>
-      </div>
-      <Grid container spacing={2}>
+
+      {/* Display cells 2 by 2 in rows */}
+      <div className="grid grid-cols-2 gap-4">
         {Object.keys(filteredSummary).map((workCellName, index) => (
-          <Grid item xs={12} sm={6} md={3} key={index}>
-            <div className="flex flex-col items-center text-xs">
-              <div className="mt-2 font-bold text-base italic text-gray-800">
-                Work Cell: {workCellName}
-              </div>
-              <PieChart width={160} height={160}>
-                <Pie
-                  data={Object.keys(filteredSummary[workCellName]).map(statusName => ({
-                    name: statusName,
-                    value: filteredSummary[workCellName][statusName]
-                  }))}
-                  cx={80}
-                  cy={80}
-                  labelLine={false}
-                  outerRadius={60}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {Object.keys(filteredSummary[workCellName]).map((statusName, idx) => (
-                    <Cell
-                      key={`cell-${idx}`}
-                      fill={
-                        statusName === 'Finished'
-                          ? '#A9A7A7'
-                          : statusName === 'Submitted'
-                          ? '#9ED3DA' 
-                          : statusName === 'Canceled'
-                          ? '#D9534F'
-                          : '#C8DEBE' 
-                      }
-                    />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
+          <div key={index} className="text-center">
+            <div className="font-bold text-base italic text-gray-800 mb-2">
+              Work Cell: {workCellName}
             </div>
-          </Grid>
+            <PieChart width={160} height={160}>
+              <Pie
+                data={Object.keys(filteredSummary[workCellName]).map(statusName => ({
+                  name: statusName,
+                  value: filteredSummary[workCellName][statusName]
+                }))}
+                cx={80}
+                cy={80}
+                labelLine={false}
+                outerRadius={60}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {Object.keys(filteredSummary[workCellName]).map((statusName, idx) => (
+                  <Cell
+                    key={`cell-${idx}`}
+                    fill={
+                      statusName === 'Finished'
+                        ? '#A9A7A7'
+                        : statusName === 'Submitted'
+                        ? '#9ED3DA'
+                        : statusName === 'Canceled'
+                        ? '#D9534F'
+                        : '#C8DEBE'
+                    }
+                  />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </div>
         ))}
-      </Grid>
+      </div>
     </Box>
   );
 };
