@@ -171,49 +171,67 @@ const History = () => {
 
   const handleCancelOrderClick = async (orderId) => {
     try {
-      await apiService.cancelOrder(orderId); // Call the API to cancel the order
+      // Call the API to cancel the order
+      const updatedOrder = await apiService.cancelOrder(orderId);
+  
+      // Update the orders state to reflect the cancelled order
       const updatedOrders = orders.map(order => {
         if (order.ID === orderId) {
-          return { ...order, Status: { name: 'Cancelled' } };
+          return { ...order, Status: { name: 'Cancelled' } }; // Update the status locally to 'Cancelled'
         }
         return order;
       });
-      setOrders(updatedOrders);
-      setFilteredOrders(updatedOrders);
+  
+      setOrders(updatedOrders);    // Update orders in the state
+      setFilteredOrders(updatedOrders); // Update filtered orders if filtering is applied
     } catch (error) {
       console.error('Error cancelling order:', error);
     }
   };
+  
 
   const handleNoteSubmit = async () => {
     try {
-      await apiService.updateOrderNote(selectedOrder.ID, note); // Save note to backend
+      // Pass the auto-incremented ID (like 1013), not the MongoDB ObjectId
+      await apiService.updateOrderNote(selectedOrder.ID, note); 
+      
+      // Update local state after successfully updating the note
       const updatedOrders = orders.map(order => {
         if (order.ID === selectedOrder.ID) {
-          return { ...order, Notes: note };
+          return { ...order, Note: note }; // Update note in local state
         }
         return order;
       });
-
-      setOrders(updatedOrders);
-      setFilteredOrders(updatedOrders);
-      setNoteDialogOpen(false);
-      setNote('');
+  
+      setOrders(updatedOrders); // Update the orders state
+      setFilteredOrders(updatedOrders); // Update filtered orders as well
+      setNoteDialogOpen(false); // Close the dialog
+      setNote(''); // Clear the note input field
     } catch (error) {
       console.error('Error saving notes:', error);
     }
   };
+  
 
   return (
     <div className="max-h-[80vh] overflow-y-auto scrollbar-thin scrollbar-thumb-[#363636] scrollbar-track-[#e7e7e7] rounded-lg">
-      <div className="flex justify-between items-center p-5">
-        <Button onClick={exportToExcel} className="bg-[#217346] text-white p-2 rounded">
-          Export to Excel
-        </Button>
-        <Button onClick={handleAddOrderClick} className="bg-blue-600 text-white p-2 rounded">
-          Add New Order
-        </Button>
-      </div>
+      <div className="flex justify-start items-center space-x-4 p-5">
+  <Button 
+    onClick={exportToExcel} 
+    style={{ backgroundColor: '#008000', color: 'white' }} 
+    className="p-2 rounded"
+  >
+    Export to Excel
+  </Button>
+  <Button 
+    onClick={handleAddOrderClick} 
+    style={{ backgroundColor: '#5584B1', color: 'white' }} 
+    className="p-2 rounded"
+  >
+    Add New Order
+  </Button>
+</div>
+
 
       <TableContainer className="relative w-full overflow-x-auto">
         <Table>
@@ -270,39 +288,105 @@ const History = () => {
                   ))}
                 </Menu>
               </TableCell>
-              <TableCell className="p-3 text-left">Created Date</TableCell>
-              <TableCell className="p-3 text-left">End Date</TableCell>
-              <TableCell className="p-3 text-left">Owner</TableCell>
-              <TableCell className="p-3 text-left">Plates (IDs)</TableCell>
-              <TableCell className="p-3 text-left">Actions</TableCell>
+              <TableCell className="p-3 text-left">
+  Owner
+  <IconButton onClick={(e) => handleMenuOpen('owner', e)}>
+    <ArrowDropDown />
+  </IconButton>
+  <Menu
+    anchorEl={filterMenus.owner}
+    open={Boolean(filterMenus.owner)}
+    onClose={() => handleMenuClose('owner')}
+  >
+    {getUniqueValues('owner').map((value) => (
+      <MenuItem key={value} onClick={() => handleFilter('owner', value)}>
+        {value}
+      </MenuItem>
+    ))}
+  </Menu>
+</TableCell>
+
+<TableCell className="p-3 text-left">
+      Created Date
+      <IconButton onClick={(e) => handleMenuOpen('createdDate', e)}>
+        <ArrowDropDown />
+      </IconButton>
+      <Menu
+        anchorEl={filterMenus.createdDate}
+        open={Boolean(filterMenus.createdDate)}
+        onClose={() => handleMenuClose('createdDate')}
+      >
+        {getUniqueValues('createdDate').map((value) => (
+          <MenuItem key={value} onClick={() => handleFilter('createdDate', value)}>
+            {value}
+          </MenuItem>
+        ))}
+      </Menu>
+    </TableCell>
+    <TableCell className="p-3 text-left">
+      End Date
+      <IconButton onClick={(e) => handleMenuOpen('endDate', e)}>
+        <ArrowDropDown />
+      </IconButton>
+      <Menu
+        anchorEl={filterMenus.endDate}
+        open={Boolean(filterMenus.endDate)}
+        onClose={() => handleMenuClose('endDate')}
+      >
+        {getUniqueValues('endDate').map((value) => (
+          <MenuItem key={value} onClick={() => handleFilter('endDate', value)}>
+            {value}
+          </MenuItem>
+        ))}
+      </Menu>
+    </TableCell>
+    <TableCell className="p-3 text-left">
+      Plates (IDs)
+      <IconButton onClick={(e) => handleMenuOpen('plates', e)}>
+        <ArrowDropDown />
+      </IconButton>
+      <Menu
+        anchorEl={filterMenus.plates}
+        open={Boolean(filterMenus.plates)}
+        onClose={() => handleMenuClose('plates')}
+      >
+        {getUniqueValues('plates').map((value) => (
+          <MenuItem key={value} onClick={() => handleFilter('plates', value)}>
+            {value}
+          </MenuItem>
+        ))}
+      </Menu>
+    </TableCell>
+    <TableCell className="p-3 text-left">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredOrders.map((order) => (
-              <TableRow key={order.ID} className="bg-[#D3E2EF] hover:bg-[#6f9bc2]">
-                <TableCell className="p-3">{order.WorkCell?.name || 'N/A'}</TableCell>
-                <TableCell className="p-3">{order.ID || 'N/A'}</TableCell>
-                <TableCell className="p-3">{order.Status?.name || 'N/A'}</TableCell>
-                <TableCell className="p-3">{new Date(order.CreatedDate).toLocaleDateString()}</TableCell>
-                <TableCell className="p-3">{order.EndDate ? new Date(order.EndDate).toLocaleDateString() : 'N/A'}</TableCell>
-                <TableCell className="p-3">{order.Owner?.fullname || 'N/A'}</TableCell>
-                <TableCell className="p-3">{order.Plates ? order.Plates.map(plate => plate.ID).join(', ') : 'No Plates'}</TableCell>
-                <TableCell className="p-3">
-                  <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
-                    <MoreVert />
-                  </IconButton>
-                  <Menu
-                    anchorEl={anchorEl}
-                    open={Boolean(anchorEl)}
-                    onClose={() => setAnchorEl(null)}
-                  >
-                    <MenuItem onClick={() => handleAddNotesClick(order)}>Add Notes</MenuItem>
-                    <MenuItem onClick={() => handleCancelOrderClick(order.ID)}>Cancel Order</MenuItem>
-                  </Menu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
+  {filteredOrders.map((order) => (
+    <TableRow key={order.ID} className="bg-[#D3E2EF] hover:bg-[#6f9bc2]">
+      <TableCell className="p-3">{order.WorkCell?.name || 'N/A'}</TableCell>
+      <TableCell className="p-3">{order.ID || 'N/A'}</TableCell>
+      <TableCell className="p-3">{order.Status?.name || 'N/A'}</TableCell>
+      <TableCell className="p-3">{order.Owner?.fullname || 'N/A'}</TableCell> {/* Owner data here */}
+      <TableCell className="p-3">{new Date(order.CreatedDate).toLocaleDateString()}</TableCell>
+      <TableCell className="p-3">{order.EndDate ? new Date(order.EndDate).toLocaleDateString() : 'N/A'}</TableCell>
+      <TableCell className="p-3">{order.Plates ? order.Plates.map(plate => plate.ID).join(', ') : 'No Plates'}</TableCell>
+      <TableCell className="p-3">
+        {/* Actions Menu */}
+        <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
+          <MoreVert />
+        </IconButton>
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={() => setAnchorEl(null)}
+        >
+          <MenuItem onClick={() => handleAddNotesClick(order)}>Add Notes</MenuItem>
+          <MenuItem onClick={() => handleCancelOrderClick(order.ID)}>Cancel Order</MenuItem>
+        </Menu>
+      </TableCell>
+    </TableRow>
+  ))}
+</TableBody>
         </Table>
       </TableContainer>
 

@@ -6,54 +6,75 @@ const Plate = require('../models/PlateModel');
 const mongoose = require('mongoose');
 
 const addOrder = async (req, res) => {
-  const { Description, Owner, WorkCell: WorkCellId, Status: StatusId, EndDate, Plates } = req.body;
+  const { description, owner, workCell, status, endDate, plates, notes, createdDate } = req.body;
 
-  if (!Description || !Owner || !WorkCellId || !StatusId) {
+  console.log('Request Body:', req.body); // Log the request body for inspection
+
+  if (!description || !owner || !workCell || !status) {
     return res.status(400).json({ message: 'Description, Owner, WorkCell, and Status are required.' });
   }
 
   try {
-    const ownerExists = await User.findById(Owner);
-    if (!ownerExists) {
+    // 1. Find the owner by fullname
+    const ownerDoc = await User.findOne({ fullname: owner });
+    if (!ownerDoc) {
+      console.log('Owner not found:', owner); // Log owner not found error
       return res.status(400).json({ message: 'Owner not found.' });
     }
 
-    const workCellExists = await WorkCell.findById(WorkCellId);
-    if (!workCellExists) {
+    // 2. Find the work cell by name
+    const workCellDoc = await WorkCell.findOne({ name: workCell });
+    if (!workCellDoc) {
+      console.log('WorkCell not found:', workCell); // Log work cell not found error
       return res.status(400).json({ message: 'WorkCell not found.' });
     }
 
-    const statusExists = await Status.findById(StatusId);
-    if (!statusExists) {
+    // 3. Find the status by name
+    const statusDoc = await Status.findOne({ name: status });
+    if (!statusDoc) {
+      console.log('Status not found:', status); // Log status not found error
       return res.status(400).json({ message: 'Status not found.' });
     }
 
-    const plateIds = [];
-    if (Plates) {
-      for (const plateId of Plates) {
-        const plateExists = await Plate.findById(plateId);
-        if (!plateExists) {
-          return res.status(400).json({ message: `Plate with ID ${plateId} not found.` });
-        }
-        plateIds.push(plateId);
+    // Log resolved ObjectIDs
+    console.log('Resolved Owner ObjectId:', ownerDoc._id);
+    console.log('Resolved WorkCell ObjectId:', workCellDoc._id);
+    console.log('Resolved Status ObjectId:', statusDoc._id);
+
+    // 4. Find the plates by barcode
+    const plateDocs = [];
+    for (const barcode of plates) {
+      const plateDoc = await Plate.findOne({ barcode });
+      if (!plateDoc) {
+        console.log(`Plate with barcode ${barcode} not found`);
+        return res.status(400).json({ message: `Plate with barcode ${barcode} not found.` });
       }
+      plateDocs.push(plateDoc._id);
     }
 
+    // 5. Create the new order with the resolved ObjectIDs
     const newOrder = new Order({
-      Description,
-      Owner,
-      WorkCell: WorkCellId,
-      Status: StatusId,
-      EndDate,
-      Plates: plateIds,
+      Description: description,
+      Owner: ownerDoc._id, // Use ObjectID of the owner
+      WorkCell: workCellDoc._id, // Use ObjectID of the work cell
+      Status: statusDoc._id, // Use ObjectID of the status
+      EndDate: endDate,
+      Plates: plateDocs, // Use ObjectIDs of the plates
+      Note: notes,
+      CreatedDate: createdDate || Date.now(),
     });
 
     const savedOrder = await newOrder.save();
     res.status(201).json(savedOrder);
   } catch (error) {
+    console.error('Error adding order:', error);
     res.status(500).json({ message: 'Error adding order', error });
   }
 };
+
+
+
+
 
 const getOrders = async (req, res) => {
   try {
@@ -110,50 +131,55 @@ const getWorkCellSummary = async (req, res) => {
 
 const cancelOrder = async (req, res) => {
   const { id } = req.params;
-  console.log(`Cancel request received for order ID: ${id}`);
 
   try {
-    const orderId = isNaN(id) ? mongoose.Types.ObjectId(id) : parseInt(id, 10);
-
-    const order = await Order.findOne({ _id: orderId });
+    // Find the order by its auto-incremented ID
+    const order = await Order.findOne({ ID: id });
     if (!order) {
-      console.error(`Order with ID ${id} not found`);
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    // Find the "Canceled" status (note the single "L")
     const canceledStatus = await Status.findOne({ name: 'Canceled' });
     if (!canceledStatus) {
-      console.error('Canceled status not found');
       return res.status(400).json({ message: 'Canceled status not found' });
     }
 
+    // Update the order status to 'Canceled'
     order.Status = canceledStatus._id;
     await order.save();
-    console.log(`Order with ID ${id} canceled successfully`);
 
-    res.status(200).json({ message: 'Order canceled successfully', order });
+    res.status(200).json(order); // Return the updated order
   } catch (error) {
-    console.error('Error canceling order:', error);
-    res.status(500).json({ message: 'Error canceling order', error });
+    console.error('Error cancelling order:', error);
+    res.status(500).json({ message: 'Error cancelling order', error });
   }
 };
 
+
+
 const updateOrderNote = async (req, res) => {
-  const { id } = req.params;
+  const { id } = req.params; // This is the auto-incremented ID, not the ObjectId
   const { note } = req.body;
 
   try {
-    const order = await Order.findById(id);
+    // Find the order by custom auto-incremented ID
+    const order = await Order.findOne({ ID: id });
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
+    // Update the note field
     order.Note = note;
     await order.save();
-    res.json(order);
+
+    res.json(order); // Send the updated order back as a response
   } catch (err) {
+    console.error('Error saving note:', err);
     res.status(500).json({ message: err.message });
   }
 };
+
+
 
 module.exports = { addOrder, getOrders, getSummary, getWorkCellSummary, cancelOrder, updateOrderNote };
